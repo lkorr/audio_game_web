@@ -1,0 +1,25 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body><canvas id="canvas" width="640" height="480"></canvas>
+<pre id="log" style="color:#0f0;font:11px monospace;white-space:pre-wrap"></pre>
+<script>
+const L=document.getElementById('log');
+const put=(t,a)=>{L.textContent+='['+t+'] '+a.map(x=>{try{return typeof x==='object'?JSON.stringify(x):String(x)}catch(e){return String(x)}}).join(' ')+'\n';};
+['log','warn','error'].forEach(k=>{const o=console[k];console[k]=(...a)=>{put(k,a);o.apply(console,a);};});
+window.onerror=(m,s,l,c,e)=>put('onerror',[m, e&&e.stack]);
+</script>
+<script src="dist/audiogame.js"></script>
+<script>
+(async()=>{try{
+  const M=await createAudioGame({canvas:document.getElementById('canvas'),
+    locateFile:(p,pre)=>((p==='audiogame.wasm'||p==='audiogame.data')?'dist/'+p:pre+p),
+    print:t=>put('wasm',[t]), printErr:t=>put('wasm-err',[t])});
+  const cw=(n,r,a)=>M.cwrap(n,r,a);
+  cw('wasm_create_audio','number',[])();
+  cw('wasm_init',null,['number'])(44100);
+  cw('wasm_start_audio',null,[])();
+  cw('wasm_resume_audio',null,[])();
+  const tick=cw('wasm_tick',null,['number']);
+  let n=0; (function f(){ try{tick(0.016);}catch(e){put('TICK',[e&&e.message]);}
+    if(++n<200) requestAnimationFrame(f); else put('probe',['200 ticks done']); })();
+}catch(e){ put('CAUGHT',[e&&(e.stack||e.message)]); }})();
+</script></body></html>

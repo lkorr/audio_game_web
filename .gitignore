@@ -1,0 +1,14 @@
+# Build artifacts
+dist/
+build-em/
+build/
+
+# CMake
+CMakeUserPresets.json
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/

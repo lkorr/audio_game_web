@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>audio_game</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #000; color: #cfe; font-family: monospace;
+  }
+  /* The game canvas fills the viewport; WebGL drawing-buffer size is set in JS. */
+  #canvas {
+    display: block; width: 100vw; height: 100vh;
+    background: #000; cursor: crosshair; outline: none;
+  }
+  /* Click-to-enter gate (required for audio autoplay + pointer lock). */
+  #gate {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1rem;
+    background: rgba(0,0,0,0.92); z-index: 10; cursor: pointer;
+    text-align: center; padding: 2rem;
+  }
+  #gate h1 { font-size: 1.4rem; font-weight: normal; letter-spacing: 0.1em; }
+  #gate p  { max-width: 34rem; line-height: 1.5; opacity: 0.8; font-size: 0.85rem; }
+  #status {
+    position: fixed; left: 8px; bottom: 6px; z-index: 5;
+    font-size: 11px; opacity: 0.6; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <canvas id="canvas" tabindex="0"></canvas>
+  <div id="gate">
+    <h1>audio_game</h1>
+    <p>
+      An audio-first walking simulation. Put on headphones.
+      WASD to move, mouse to look, Shift to sprint.
+      F2 opens dev/build mode (place objects, paint the floor, tune the engine, save worlds).
+      Press Esc to release the mouse.
+    </p>
+    <p><strong>Click anywhere to enter.</strong></p>
+  </div>
+  <div id="status">loading...</div>
+
+  <!-- Emscripten MODULARIZE factory (EXPORT_NAME=createAudioGame). Loaded
+       before main.js so the global factory exists when boot() runs. -->
+  <script src="dist/audiogame.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

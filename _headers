@@ -1,0 +1,10 @@
+# Cross-origin isolation headers required by the audio worklet (SharedArrayBuffer).
+# Format: Netlify / Cloudflare Pages "_headers" file. Deploy this at the site
+# root (or the /audiogame folder root). For other hosts, set the same two
+# headers via their config (see README):
+#   Cross-Origin-Opener-Policy: same-origin
+#   Cross-Origin-Embedder-Policy: require-corp
+
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
