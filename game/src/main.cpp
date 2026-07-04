@@ -368,14 +368,21 @@ int runGame(const GameOptions& opt) {
                     scenePath.c_str());
     }
 
-    // Live tunables: one file next to the exe's working dir. If it doesn't exist
-    // yet, write a template seeded with the current defaults so you have the full
-    // key list to edit. Load it now (over the scene's engine params), and the
-    // frame loop re-reads it whenever it changes on disk -- edit while playing.
-    const std::string kTunablesPath = "tunables.txt";
+    // Live tunables: one fixed file at the REPO ROOT (path baked in at build time
+    // via AUDIO_GAME_REPO_ROOT), so it is in the same easy-to-find place no matter
+    // which directory you launch the exe from. If it doesn't exist yet, write a
+    // template seeded with the current defaults so you have the full key list to
+    // edit. Load it now (over the scene's engine params); the frame loop re-reads
+    // it whenever it changes on disk -- edit while playing, no rebuild.
+#ifdef AUDIO_GAME_REPO_ROOT
+    const std::string kTunablesPath = std::string(AUDIO_GAME_REPO_ROOT) + "/tunables.txt";
+#else
+    const std::string kTunablesPath = "tunables.txt";   // fallback: working dir
+#endif
     if (!tune::load(kTunablesPath))
         tune::writeTemplate(kTunablesPath);   // first run: drop a starter file
     tune::applyEngine(kTunablesPath, loadedTuning);
+    std::printf("[tunables] file: %s\n", kTunablesPath.c_str());
 
     Player player;
     player.yaw = opt.lookYaw;

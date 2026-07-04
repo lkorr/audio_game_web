@@ -29,6 +29,13 @@ target_include_directories(audio_game PRIVATE
     ${miniaudio_SOURCE_DIR}
 )
 
+# Bake the repo root in so the game always reads/writes tunables.txt there,
+# regardless of which directory the exe is launched from (double-click, IDE,
+# terminal). CMAKE_SOURCE_DIR is the repo root (the top-level CMakeLists dir).
+target_compile_definitions(audio_game PRIVATE
+    AUDIO_GAME_REPO_ROOT="${CMAKE_SOURCE_DIR}"
+)
+
 if(MSVC)
     target_compile_options(audio_game PRIVATE $<$<CONFIG:Release>:/O2>)
 endif()
