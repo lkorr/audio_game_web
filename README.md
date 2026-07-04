@@ -55,13 +55,44 @@ CPM, same as the native build).
 
 ## Build
 
+**Web (WebAssembly):**
 ```bash
-cd webgame
-./build.sh            # Windows: build.bat
+./build.sh            # Windows: build.bat  (wraps emcmake)
 ```
+Artifacts appear in `dist/`. Rebuild any time you change sources or assets.
 
-Artifacts appear in `webgame/dist/`. Rebuild any time you change sources or
-assets.
+**Native (desktop -- for live tuning):**
+```bash
+cmake -B build -G "Visual Studio 17 2022" -A x64      # or your generator
+cmake --build build --config Release --target audio_game
+./build/game/Release/audio_game --slice
+```
+The same root `CMakeLists.txt` builds native when configured with a normal
+compiler and web when configured via `emcmake` (`build.sh`).
+
+---
+
+## Tuning the game live (`tunables.txt`)
+
+Almost every gameplay/visual knob -- Stalker AI (speeds, thresholds, lunge
+range/overshoot, timers, masking, hearing), slice rules (catch/goal radius),
+player (speed, radius, eye height, mouse sens), ping loudness, and the
+darkness pool / reveal radii -- lives in one file, `tunables.txt`, as
+`key = value` lines. The audio-engine params are reachable in the same file via
+`engine <key>=<value>`.
+
+Run the **native** build (`audio_game --slice`). On first run it writes a
+`tunables.txt` seeded with every key + its default and a comment. Edit it on a
+second monitor while the game runs -- it reloads within a frame (no rebuild, no
+restart), so you hear/see each change immediately. Delete a line to restore that
+knob's built-in default.
+
+**Web:** there is no live filesystem to re-read while playing, so dial values in
+on native, then bundle the file for web by copying your tuned `tunables.txt` to
+`assets/tunables.txt` and rebuilding -- it is applied once at load.
+
+All defaults live in `game/src/Tunables.{h,cpp}` (the one table `kEntries` is the
+source of truth for keys, defaults, and the generated template).
 
 ---
 

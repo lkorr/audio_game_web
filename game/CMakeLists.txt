@@ -15,6 +15,7 @@ add_executable(audio_game
     src/Scene.cpp
     src/Stalker.cpp
     src/SliceGame.cpp
+    src/Tunables.cpp
     src/Renderer.cpp
 )
 

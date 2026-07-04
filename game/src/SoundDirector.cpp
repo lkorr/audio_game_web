@@ -1,4 +1,5 @@
 #include "SoundDirector.h"
+#include "Tunables.h"
 #include <glm/geometric.hpp>
 #include <algorithm>
 #include <cmath>
@@ -261,7 +262,7 @@ bool SoundDirector::onPing(const ListenerPose& listener) {
     cfg.verbWet = 0.85f;         // the point of the ping is its reverb return
     cfg.doppler = false;
     if (!world_->playOneShot(buf, pos, 1.0, cfg, listener)) return false;
-    pingCooldown_ = kPingCooldown;
+    pingCooldown_ = tune::kPingCooldown;
     return true;
 }
 

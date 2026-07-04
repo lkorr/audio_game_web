@@ -1,15 +1,21 @@
 cmake_minimum_required(VERSION 3.25)
-project(audio_game_web LANGUAGES C CXX)
+project(audio_game LANGUAGES C CXX)
 
-# This file is built with the Emscripten toolchain (emcmake cmake ...). It
-# reuses the SAME engine + portable game sources as the native build and only
-# swaps the platform glue (see webgame/README.md). Do NOT configure this with a
-# native compiler -- use emcmake.
-
-if(NOT EMSCRIPTEN)
-    message(FATAL_ERROR
-        "Configure with emcmake: `emcmake cmake -B dist -DCMAKE_BUILD_TYPE=Release`")
-endif()
+# This repo is fully self-contained (engine/, game/, cmake/ vendored in) and
+# builds TWO ways from this one file:
+#
+#   Native (desktop, live-tweak):
+#     cmake -B build -DCMAKE_BUILD_TYPE=Release
+#     cmake --build build --config Release --target audio_game
+#     ./build/game/Release/audio_game --slice      # edit tunables.txt live
+#
+#   Web (WebAssembly, via Emscripten):
+#     ./build.sh                                    # emcmake wrapper
+#
+# The two share the engine + portable game/src sources and swap only the
+# platform glue (native game/src/{main,AudioDevice,GLLoader}.cpp vs web src/*).
+# When configured WITHOUT Emscripten we build the native exe; WITH emcmake we
+# build the WASM module.
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,17 +23,49 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
-# Repo root. The shared game/engine/cmake sources are vendored INTO this repo
-# (game/, engine/, cmake/ at the root) so the web build is fully self-contained
-# with no dependency on the original native repo. REPO_ROOT can still be pointed
-# elsewhere on the command line (-DREPO_ROOT=<path>) if you want to build against
-# an external checkout, but by default it is this repo.
+# The vendored shared sources live under this repo. REPO_ROOT can still point at
+# an external checkout (-DREPO_ROOT=<path>) but defaults to here.
 if(NOT DEFINED REPO_ROOT)
     set(REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 get_filename_component(REPO_ROOT ${REPO_ROOT} ABSOLUTE)
-message(STATUS "audio_game web build: REPO_ROOT = ${REPO_ROOT}")
 set(GAME_SRC  ${REPO_ROOT}/game/src)
+
+# ============================ NATIVE BUILD ==================================
+# Desktop build (SDL3 window/audio). This is the build you live-tweak with:
+# run `audio_game --slice`, then edit tunables.txt on your other monitor.
+if(NOT EMSCRIPTEN)
+    message(STATUS "audio_game: NATIVE build")
+    include(${REPO_ROOT}/cmake/CPM.cmake)
+
+    CPMAddPackage(
+        NAME SDL3
+        GITHUB_REPOSITORY libsdl-org/SDL
+        GIT_TAG release-3.2.14
+        OPTIONS
+            "SDL_SHARED OFF"
+            "SDL_STATIC ON"
+            "SDL_TEST_LIBRARY OFF"
+    )
+    CPMAddPackage(
+        NAME glm
+        GITHUB_REPOSITORY g-truc/glm
+        GIT_TAG 1.0.1
+    )
+    CPMAddPackage(
+        NAME miniaudio
+        GITHUB_REPOSITORY mackron/miniaudio
+        GIT_TAG 0.11.21
+        DOWNLOAD_ONLY YES
+    )
+
+    add_subdirectory(engine)
+    add_subdirectory(game)
+    return()   # native target is defined in game/CMakeLists.txt; we're done
+endif()
+
+# ============================= WEB BUILD ====================================
+message(STATUS "audio_game: WEB (Emscripten) build: REPO_ROOT = ${REPO_ROOT}")
 
 # --- Dependencies (header-only; fetched like the native root CMake) ----------
 include(${REPO_ROOT}/cmake/CPM.cmake)
@@ -89,6 +127,7 @@ add_executable(audiogame
     ${GAME_SRC}/Scene.cpp
     ${GAME_SRC}/Stalker.cpp
     ${GAME_SRC}/SliceGame.cpp
+    ${GAME_SRC}/Tunables.cpp
     ${GAME_SRC}/Renderer.cpp
 )
 

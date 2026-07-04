@@ -6,9 +6,16 @@ build/
 # CMake
 CMakeUserPresets.json
 
+# Auto-generated live-tweak file (written on first native run). A deliberately
+# committed web baseline would live at assets/tunables.txt instead.
+/tunables.txt
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# Test output
+render_test.wav

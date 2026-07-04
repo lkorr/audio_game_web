@@ -1,6 +1,7 @@
 #include "Stalker.h"
 #include "SoundLibrary.h"
 #include "SoundDirector.h"
+#include "Tunables.h"
 #include <glm/geometric.hpp>
 #include <algorithm>
 #include <cmath>
@@ -8,70 +9,36 @@
 
 namespace {
 
-// Tuning constants for the hunt. Kept here (not in SoundRule) because they are
-// behavior, not sound character.
-constexpr float kHearThreshold = 0.06f;  // min perceived loudness to react to
-constexpr float kChaseThreshold = 0.30f; // perceived loudness that means "close"
-constexpr float kAlertHold = 6.0f;       // seconds to pursue after last hearing
-constexpr float kPatrolSpeed = 1.1f;     // m/s wandering
-constexpr float kInvestigateSpeed = 1.9f;
-constexpr float kSearchSpeed = 1.5f;     // brisk sweep while hunting the area
-constexpr float kChaseSpeed = 2.7f;      // still < player sprint (3.0): escapable
-constexpr float kArrive = 1.0f;          // within this of lastHeard = arrived
-constexpr float kMusicPush = 3.0f;       // outward accel scale at a sanctuary edge
-
-// Search phase: after the trail goes cold the stalker sweeps the area around the
-// last-heard spot for kSearchHold seconds before giving up to Patrol. It picks a
-// fresh random-ish point within kSearchRadius each time it arrives at one.
-constexpr float kSearchHold = 10.0f;     // seconds spent hunting the area
-constexpr float kSearchRadius = 8.0f;    // how far around lastHeard it sweeps
-
-// Attack lunge: while Chasing, if the player's last-heard spot is within
-// kLungeRange it commits to a lunge -- locks a point kLungeOvershoot metres PAST
-// that spot and sprints straight to it at kChaseSpeed*kLungeSpeedMult, ignoring
-// new cues (fully committed: sidestep it). On arrival it is Confused for
-// kConfusedHold seconds (a stunned pause), then drops into Search. kLungeMaxTime
-// is a safety cap so a blocked lunge can't run forever.
-constexpr float kLungeRange = 5.0f;        // Chase within this of the cue -> lunge
-constexpr float kLungeOvershoot = 3.0f;    // metres past the locked spot
-constexpr float kLungeSpeedMult = 4.0f;    // lunge speed = chase speed * this (~4x)
-constexpr float kLungeArrive = 0.8f;       // within this of lungeTarget = done
-constexpr float kLungeMaxTime = 1.2f;      // hard cap on one lunge (blocked path)
-constexpr float kConfusedHold = 1.6f;      // stunned pause after a lunge, seconds
-
-// Mood vocalizations: the interval between repeated in-state calls (a call also
-// fires immediately on entering a state). Roomy so it punctuates, not chatters.
-constexpr float kCueInterval = 3.5f;
-
-// Ambient masking: loud continuous emitters (the stream, cavern drips, wind)
-// drown out the player's footsteps near them. This is a LOCAL signal-to-noise
-// gate, both terms measured at the player: the player's own sound strength vs.
-// the ambient level at the same spot. The stalker's perceived loudness is scaled
-// by  signal / (signal + kMaskScale * ambient)  -- 1.0 in quiet, falling toward 0
-// only when a loud source is right on top of you. A multiplicative gate (not a
-// subtraction of a far-field number) keeps loud sounds mostly audible unless you
-// are genuinely hugging a source, so the stalker isn't deaf out in the open.
-constexpr float kMaskScale = 2.5f;       // ambient weight in the SNR gate
-constexpr float kMaskRadius = 14.0f;     // ignore ambient sources beyond this (near-field only)
-
-// Hearing window. A hard distance cutoff comes first (cheap early-out before the
-// occlusion/distance weighting) so sounds far across the map never move a
-// stalker. Within that radius it commits to the LOUDEST sound of the last
-// `kHearWindow` seconds -- a fresh cue only wins if it is louder OR the current
-// cue has expired, so it locks onto the strongest recent thing instead of
-// twitching to every faint step.
-constexpr float kHearRadius = 28.0f;     // hard cutoff: ignore sounds beyond this
-constexpr float kHearWindow = 3.0f;      // seconds a heard cue stays "the" cue
-
-// Stalker footsteps: distance between one-shots (shorter when moving fast),
-// per-state loudness, and the speed below which it is effectively stationary and
-// stays silent.
-constexpr float kStepDistance = 0.8f;    // travel between footstep one-shots (m):
-                                         // short so the gait reads as a rhythm,
-                                         // not a lonely thud every second-plus
-constexpr float kChaseStepGain = 0.9f;   // heavy, close: the gait you dread
-constexpr float kPatrolStepGain = 0.7f;  // still clearly audible while it prowls
-constexpr float kStepSilentSpeed = 0.15f; // m/s below this: no footsteps
+// The hunt's behavior constants now live in the live-tunable registry (Tunables.h
+// / tunables.txt): edit them while the native game runs. These aliases keep the
+// rest of the file reading the short kXxx names. NOTE: because they are runtime
+// globals, read them by name each frame -- do not cache into a local constexpr.
+using tune::kHearThreshold;
+using tune::kChaseThreshold;
+using tune::kAlertHold;
+using tune::kPatrolSpeed;
+using tune::kInvestigateSpeed;
+using tune::kSearchSpeed;
+using tune::kChaseSpeed;
+using tune::kArrive;
+using tune::kMusicPush;
+using tune::kSearchHold;
+using tune::kSearchRadius;
+using tune::kLungeRange;
+using tune::kLungeOvershoot;
+using tune::kLungeSpeedMult;
+using tune::kLungeArrive;
+using tune::kLungeMaxTime;
+using tune::kConfusedHold;
+using tune::kCueInterval;
+using tune::kMaskScale;
+using tune::kMaskRadius;
+using tune::kHearRadius;
+using tune::kHearWindow;
+using tune::kStepDistance;
+using tune::kChaseStepGain;
+using tune::kPatrolStepGain;
+using tune::kStepSilentSpeed;
 
 // Loudness of a sound as perceived at `at`: source strength attenuated by
 // inverse-distance falloff (with a 1 m floor) and by geometric occlusion. This
@@ -109,7 +76,7 @@ float ambientLevelAt(const Scene& scene, const glm::vec3& at,
 // the shallowest axis. Cylinders (tree trunks) are thin; we let the stalker
 // brush past those rather than solve full capsule-vs-cylinder here.
 glm::vec3 avoidOccluders(const glm::vec3& p, const std::vector<Occluder>& occluders) {
-    constexpr float kSkin = 0.6f;   // stalker "radius"
+    const float kSkin = tune::kStalkerSkin;   // stalker "radius" (live-tunable)
     glm::vec3 out = p;
     for (const Occluder& o : occluders) {
         if (o.shape != Occluder::Shape::Box) continue;

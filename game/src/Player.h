@@ -7,6 +7,7 @@
 // therefore *decreases* yaw. Positive pitch = looking up.
 
 #include "Scene.h"
+#include "Tunables.h"
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <vector>
@@ -32,22 +33,26 @@ struct BumpEvent {
 
 class Player {
 public:
-    static constexpr float kEyeHeight = 1.7f;
-    static constexpr float kRadius = 0.35f;
-    static constexpr float kWalkSpeed = 1.6f;
-    static constexpr float kSprintSpeed = 3.0f;
-    static constexpr float kStepDistance = 0.75f;
-    static constexpr float kMouseSens = 0.0026f;  // rad per pixel
+    // Player tunables are the live-tunable globals (tunables.txt `player.*`).
+    // These accessors keep the old Player::kXxx call sites working while reading
+    // the current value each time. (Not constexpr anymore -- they can change at
+    // runtime on the native build.)
+    static float kEyeHeight()   { return tune::kPlayerEyeHeight; }
+    static float kRadius()      { return tune::kPlayerRadius; }
+    static float kWalkSpeed()   { return tune::kPlayerWalkSpeed; }
+    static float kSprintSpeed() { return tune::kPlayerSprintSpeed; }
+    static float kStepDistance(){ return tune::kPlayerStepDistance; }
+    static float kMouseSens()   { return tune::kPlayerMouseSens; }
 
     glm::vec2 pos{0.0f, -7.0f};
     float yaw = 0.0f;
     float pitch = 0.0f;
 
     // Dev fly/noclip: Space/LCtrl move the eye vertically, collision and
-    // footsteps are skipped. eyeZ snaps back to kEyeHeight on landing (the
+    // footsteps are skipped. eyeZ snaps back to eye height on landing (the
     // engine's position smoothers absorb the step).
     bool flying = false;
-    float eyeZ = kEyeHeight;
+    float eyeZ = tune::kPlayerEyeHeight;
 
     glm::vec3 eyePos() const { return { pos.x, pos.y, eyeZ }; }
     glm::vec3 forward() const;

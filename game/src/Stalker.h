@@ -22,6 +22,7 @@
 #include "Scene.h"
 #include "Occlusion.h"
 #include "AudioWorld.h"   // ListenerPose
+#include "Tunables.h"     // kPingLoudness (live-tunable)
 #include <glm/vec3.hpp>
 #include <vector>
 
@@ -52,8 +53,9 @@ float nearestStalkerDist(const Scene& scene, const glm::vec3& p);
 // ground (grass) and a careful pace keep you hidden.
 float footstepLoudness(const Scene& scene, int material, bool sprinting);
 
-// Loudness of the player's echo ping -- a loud, deliberate beacon.
-constexpr float kPingLoudness = 1.0f;
+// Loudness of the player's echo ping -- a loud, deliberate beacon. Live-tunable
+// (tunables.txt `ping.loudness`); the unqualified name stays available to callers.
+using tune::kPingLoudness;
 
 // Default drone profile for a new stalker (placement + buildScene).
 class SoundLibrary;

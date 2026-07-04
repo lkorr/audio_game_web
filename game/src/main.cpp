@@ -20,6 +20,7 @@
 #include "Sounds.h"
 #include "Stalker.h"
 #include "SliceGame.h"
+#include "Tunables.h"
 
 #include <SDL3/SDL.h>
 #include <glm/geometric.hpp>
@@ -148,7 +149,7 @@ int runRenderTest() {
     // verifies azimuth movement. Head sweeps +-30 degrees (5 s period).
     auto listenerAt = [](double t) {
         ListenerPose lp;
-        lp.pos = { 0.0f, static_cast<float>(-7.0 + 1.5 * t), Player::kEyeHeight };
+        lp.pos = { 0.0f, static_cast<float>(-7.0 + 1.5 * t), Player::kEyeHeight() };
         lp.yaw = 0.5236f * std::sin(2.0f * 3.14159265f * static_cast<float>(t) / 5.0f);
         lp.pitch = 0.0f;
         return lp;
@@ -175,8 +176,8 @@ int runRenderTest() {
         // Footstep cadence from horizontal travel, same rule as the game.
         stepAccum += glm::length(glm::vec2(lp.pos) - glm::vec2(prevPos));
         prevPos = lp.pos;
-        if (stepAccum >= Player::kStepDistance) {
-            stepAccum -= Player::kStepDistance;
+        if (stepAccum >= Player::kStepDistance()) {
+            stepAccum -= Player::kStepDistance();
             director.onFootstep(scene, scene.materialAt(lp.pos.x, lp.pos.y),
                                 { lp.pos.x, lp.pos.y, 0.0f }, lp);
         }
@@ -367,6 +368,15 @@ int runGame(const GameOptions& opt) {
                     scenePath.c_str());
     }
 
+    // Live tunables: one file next to the exe's working dir. If it doesn't exist
+    // yet, write a template seeded with the current defaults so you have the full
+    // key list to edit. Load it now (over the scene's engine params), and the
+    // frame loop re-reads it whenever it changes on disk -- edit while playing.
+    const std::string kTunablesPath = "tunables.txt";
+    if (!tune::load(kTunablesPath))
+        tune::writeTemplate(kTunablesPath);   // first run: drop a starter file
+    tune::applyEngine(kTunablesPath, loadedTuning);
+
     Player player;
     player.yaw = opt.lookYaw;
     player.pitch = opt.lookPitch;
@@ -441,6 +451,12 @@ int runGame(const GameOptions& opt) {
 
     while (running) {
         PlayerInput input;
+
+        // Live tunables: re-read tunables.txt if it changed on disk (cheap mtime
+        // check). AI / slice / player / view knobs are globals read in place;
+        // engine params are poured into world.tuning() (applied every frame in
+        // makeParams). Edit the file on a second monitor and it takes effect here.
+        tune::pollReload(kTunablesPath, &world.tuning());
 
         // Debug key injection (--keys), one every 0.4 s starting at 0.8 s.
         {
@@ -547,7 +563,7 @@ int runGame(const GameOptions& opt) {
         }
         for (const BumpEvent& b : bumps) {
             director.onImpact(scene, b.objectId, b.pos, listener);
-            hearSoundStalkers(scene, b.pos, 0.7f, occluders);   // impacts are loud
+            hearSoundStalkers(scene, b.pos, tune::kImpactLoudness, occluders);  // impacts are loud
         }
         director.tickPing(dt);
         if (pingRequested) {

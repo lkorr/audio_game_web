@@ -43,8 +43,7 @@ public:
 private:
     bool active_ = false;
     Outcome outcome_ = Outcome::Playing;
-    glm::vec3 goalPos_{0.0f};
-    float goalRadius_ = 3.0f;
+    glm::vec3 goalPos_{0.0f};   // win radius is tune::kGoalRadius (live-tunable)
     glm::vec3 respawn_{0.0f};   // last safe sanctuary center (or start)
     float outcomeTimer_ = 0.0f; // shows the result banner, then resets on caught
     std::string hud_;

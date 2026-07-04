@@ -2,12 +2,13 @@
 #include "Stalker.h"
 #include "Player.h"
 #include "SoundLibrary.h"
+#include "Tunables.h"
 #include <glm/geometric.hpp>
 #include <algorithm>
 
 namespace {
-constexpr float kCatchDist = 1.6f;   // stalker within this of the eye = caught
-constexpr float kBannerHold = 2.5f;  // seconds the outcome banner shows
+using tune::kCatchDist;   // stalker within this of the eye = caught (live-tunable)
+using tune::kBannerHold;  // seconds the outcome banner shows (live-tunable)
 
 // Fire a stinger set as a wet one-shot at the listener, through the current
 // room reverb. Uses SoundDirector::audition (random variant + jitter + play).
@@ -69,9 +70,9 @@ SliceGame::Outcome SliceGame::update(float dt, Scene& scene, Player& player,
         return outcome_;
     }
 
-    // Win: within range of the goal emitter.
+    // Win: within range of the goal emitter (radius is live-tunable).
     glm::vec3 toGoal = listener.pos - goalPos_; toGoal.z = 0.0f;
-    if (glm::length(toGoal) <= goalRadius_) {
+    if (glm::length(toGoal) <= tune::kGoalRadius) {
         outcome_ = Outcome::Won;
         outcomeTimer_ = kBannerHold;
         hud_ = "YOU REACHED THE GOAL. THE DARK IS QUIET NOW.";

@@ -103,5 +103,5 @@ private:
     int stalkerCallSet_ = -1;   // resolved lazily on first stalker mood call
     int stalkerLungeSet_ = -1;  // resolved lazily on first stalker lunge
     float pingCooldown_ = 0.0f;
-    static constexpr float kPingCooldown = 1.2f;
+    // Ping cooldown is the live-tunable tune::kPingCooldown (tunables.txt).
 };

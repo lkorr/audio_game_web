@@ -162,6 +162,12 @@ void wasm_init(double sampleRate) {
         std::printf("[web] no %s -- using built-in playable slice\n", kScenePath);
     }
 
+    // Live tunables, baked in: if assets/tunables.txt was bundled at build time,
+    // apply it once here (over the scene's engine params). No live reload on web
+    // (no re-readable filesystem); dial values in on native, then rebuild for web.
+    if (tune::load("assets/tunables.txt"))
+        tune::applyEngine("assets/tunables.txt", loadedTuning);
+
     g->player.yaw = 0.0f;
     g->player.pitch = 0.0f;
     g->player.pos = { 0.0f, -30.0f };   // start in the south riverside sanctuary
@@ -235,7 +241,7 @@ void wasm_tick(double dtSeconds) {
     }
     for (const BumpEvent& b : g->bumps) {
         g->director.onImpact(g->scene, b.objectId, b.pos, g->listener);
-        hearSoundStalkers(g->scene, b.pos, 0.7f, occluders);
+        hearSoundStalkers(g->scene, b.pos, tune::kImpactLoudness, occluders);
     }
     g->director.tickPing(dt);
     if (g->pingRequested) {

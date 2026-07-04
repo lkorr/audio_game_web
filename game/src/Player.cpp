@@ -57,8 +57,8 @@ bool resolveRect(glm::vec2& p, float r, const glm::vec2& center, const glm::vec2
 void Player::update(float dt, const PlayerInput& input, Scene& scene,
                     std::vector<FootstepEvent>& stepsOut,
                     std::vector<BumpEvent>& bumpsOut) {
-    yaw -= input.mouseDX * kMouseSens;
-    pitch = std::clamp(pitch - input.mouseDY * kMouseSens, -1.45f, 1.45f);
+    yaw -= input.mouseDX * kMouseSens();
+    pitch = std::clamp(pitch - input.mouseDY * kMouseSens(), -1.45f, 1.45f);
 
     const glm::vec2 fwd{ -std::sin(yaw), std::cos(yaw) };
     const glm::vec2 right{ fwd.y, -fwd.x };
@@ -70,7 +70,7 @@ void Player::update(float dt, const PlayerInput& input, Scene& scene,
     if (input.left) wish -= right;
 
     const glm::vec2 before = pos;
-    const float speed = input.sprint ? kSprintSpeed : kWalkSpeed;
+    const float speed = input.sprint ? kSprintSpeed() : kWalkSpeed();
     if (glm::dot(wish, wish) > 1e-6f) {
         wish = glm::normalize(wish);
         pos += wish * speed * dt;
@@ -80,12 +80,12 @@ void Player::update(float dt, const PlayerInput& input, Scene& scene,
     if (flying) {
         const float vert = (input.up ? 1.0f : 0.0f) - (input.down ? 1.0f : 0.0f);
         eyeZ = std::clamp(eyeZ + vert * speed * dt, 0.4f, 30.0f);
-        const float lim = Scene::kHalfExtent - kRadius;
+        const float lim = Scene::kHalfExtent - kRadius();
         pos.x = std::clamp(pos.x, -lim, lim);
         pos.y = std::clamp(pos.y, -lim, lim);
         return;
     }
-    eyeZ = kEyeHeight;
+    eyeZ = kEyeHeight();
 
     // Collision: a few resolve iterations give a stable slide response.
     // Contact points drive the localized bump flash (touch-height z: roughly
@@ -101,7 +101,7 @@ void Player::update(float dt, const PlayerInput& input, Scene& scene,
         bool any = false;
         glm::vec2 contact;
         for (Tree& t : scene.trees)
-            if (resolveCircle(pos, kRadius, t.pos, t.trunkRadius, contact)) {
+            if (resolveCircle(pos, kRadius(), t.pos, t.trunkRadius, contact)) {
                 t.flash = 1.0f;
                 t.flashPos = { contact.x, contact.y,
                                std::min(kTouchHeight, t.trunkHeight) };
@@ -109,7 +109,7 @@ void Player::update(float dt, const PlayerInput& input, Scene& scene,
                 any = true;
             }
         for (Boulder& b : scene.boulders)
-            if (resolveRect(pos, kRadius, { b.center.x, b.center.y },
+            if (resolveRect(pos, kRadius(), { b.center.x, b.center.y },
                             { b.half.x, b.half.y }, contact)) {
                 b.flash = 1.0f;
                 b.flashPos = { contact.x, contact.y,
@@ -122,14 +122,14 @@ void Player::update(float dt, const PlayerInput& input, Scene& scene,
     }
 
     // Keep inside the glade.
-    const float lim = Scene::kHalfExtent - kRadius;
+    const float lim = Scene::kHalfExtent - kRadius();
     pos.x = std::clamp(pos.x, -lim, lim);
     pos.y = std::clamp(pos.y, -lim, lim);
 
     // Footsteps from actual (post-collision) horizontal travel.
     stepAccum_ += glm::length(pos - before);
-    while (stepAccum_ >= kStepDistance) {
-        stepAccum_ -= kStepDistance;
+    while (stepAccum_ >= kStepDistance()) {
+        stepAccum_ -= kStepDistance();
         stepsOut.push_back({ { pos.x, pos.y, 0.0f }, scene.materialAt(pos.x, pos.y) });
     }
 }

@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "GLLoader.h"
+#include "Tunables.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <cmath>
@@ -845,8 +846,8 @@ void Renderer::draw(const Scene& scene, const glm::vec3& eyePos, float yaw, floa
     // FullBright is the debug lift (same reach as Lit, brighter).
     // In Lit/FullBright the reveal/fade radii are disabled (0 = no fade), so
     // the pool constants below only bite in Blind mode.
-    constexpr float kLitPoolRadius = 1.4f;    // lit ground disc around the feet
-    constexpr float kRevealRadius = 2.0f;     // objects visible within this range
+    const float kLitPoolRadius = tune::kLitPoolRadius;  // lit ground disc (live-tunable)
+    const float kRevealRadius = tune::kRevealRadius;    // object reveal range (live-tunable)
     const float gridFade = blind ? kLitPoolRadius : 0.0f;   // 0 = whole map
     const float revealRad = blind ? kRevealRadius : 0.0f;   // 0 = no reveal gate
     const float floorFade = blind ? kLitPoolRadius : 0.0f;
